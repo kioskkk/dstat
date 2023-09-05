@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>/]</title>
+    <link rel="shortcut icon" href="linux.png" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+</head>
+<body class="bg-gray-900 text-white p-10">
+
+    <div class="w-3/4 mx-auto">
+        <div class="bg-gray-800 p-5 rounded-lg shadow-lg mb-6">
+            <h1 class="text-2xl font-bold mb-2">haha i piss on yu</h1>
+            <p class="text-gray-400">Join our Telegram chat <a href="https://t.me/TF9Shopz" target="_blank">[click here]</a> to chat with the community!</p>
+            <div class="mt-3 flex space-x-3">
+                <a href="#"><img src="assets/discord.png" alt="Discord Icon" class="w-6 h-6"></a>
+                <a href="https://t.me/TF9Shopz" target="_blank"><img src="assets/telegram.png" alt="Telegram Icon" class="w-6 h-6"></a>
+            </div>
+        </div>
+
+        <div id="chart-container" style="min-width: 310px; height: 400px;"></div>
+
+        <script>
+            const chart = Highcharts.chart('chart-container', {
+                chart: {
+                    type: 'spline',
+                    backgroundColor: '#1a202c',
+                },
+                title: {
+                    text: 'Protected L7 | Basic',
+                    style: {
+                        color: '#cbd5e0'
+                    }
+                },
+                xAxis: {
+                    type: 'datetime',
+                    tickPixelInterval: 150
+                },
+                yAxis: {
+                    title: {
+                        text: 'RPS',
+                        style: {
+                            color: '#cbd5e0'
+                        }
+                    },
+                    gridLineColor: '#374151',
+                    labels: {
+                        style: {
+                            color: '#cbd5e0'
+                        }
+                    }
+                },
+                series: [{
+                    name: 'Requests Per Second',
+                    data: []
+                }],
+                legend: {
+                    itemStyle: {
+                        color: '#cbd5e0'
+                    }
+                },
+                plotOptions: {
+                    series: {
+                        marker: {
+                            enabled: false
+                        }
+                    }
+                },
+            });
+
+            let prevTimestamp = Date.now();
+            let prevConnections = 0;
+
+            async function updateNginxStatus() {
+                try {
+                    const response = await fetch('/nginx_status');
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    const data = await response.text();
+
+                    const lines = data.split('\n');
+                    for (const line of lines) {
+                        if (line.includes('Active connections')) {
+                            const match = line.match(/\d+/);
+                            if (match && match.length >= 1) {
+                                const connections = parseInt(match[0]);
+                                const timestamp = Date.now();
+                                const elapsedSeconds = (timestamp - prevTimestamp) / 1000;
+                                let requestsPerSecond = (connections - prevConnections) / elapsedSeconds;
+
+                                // Handle missing or negative RPS values
+                                requestsPerSecond = Math.max(requestsPerSecond, 0);
+
+                                // Update the chart with the raw RPS value
+                                chart.series[0].addPoint([timestamp, parseFloat(requestsPerSecond.toFixed(2))], true, chart.series[0].data.length >= 10);
+
+                                prevTimestamp = timestamp;
+                                prevConnections = connections;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+
+            setInterval(updateNginxStatus, 1000);
+        </script>
+    </div>
+</body>
+</html>
